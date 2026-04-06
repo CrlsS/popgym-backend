@@ -23,7 +23,7 @@ export default async function handler(req, res) {
         }
       })
     });
-
+    // test
     const result = await response.json();
     res.status(200).json(result);
 
