@@ -18,6 +18,7 @@ export default async function handler(req, res) {
 
     // 🧾 Bygg payload till Billecta
     const billectaPayload = {
+      creditorPublicId: "a41edb49-f116-40dc-b0ba-611080b4bdc7", // 🔥 lägg till denna rad
       name: data.name || data.Name,
       email: data.email || data.Email,
       ssn: data.ssn || data.SSN,
