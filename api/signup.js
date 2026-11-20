@@ -5,7 +5,7 @@ const WEBFLOW_FORM_NAME = "Kontakt formulär";
 const MAX_WEBHOOK_AGE_MS = 5 * 60 * 1000;
 const BILLECTA_PRODUCTION_URL = "https://api.billecta.com";
 const BILLECTA_TEST_URL = "https://apitest.billecta.com";
-const CREDITOR_PUBLIC_ID = "a41edb49-f116-40dc-b0ba-611080b4bdc7";
+const DEFAULT_CREDITOR_PUBLIC_ID = "a41edb49-f116-40dc-b0ba-611080b4bdc7";
 
 function singleHeader(value) {
   return Array.isArray(value) ? value[0] : value;
@@ -44,6 +44,33 @@ function cleanString(value, maxLength) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
 
+function getCreditorPublicId() {
+  const value = process.env.BILLECTA_CREDITOR_PUBLIC_ID || DEFAULT_CREDITOR_PUBLIC_ID;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new Error("Invalid Billecta creditor public ID");
+  }
+  return value;
+}
+
+function getBillectaAuthorization() {
+  if (process.env.BILLECTA_SECURE_TOKEN) {
+    return "SecureToken " +
+      Buffer.from(process.env.BILLECTA_SECURE_TOKEN).toString("base64");
+  }
+
+  if (process.env.BILLECTA_USERNAME && process.env.BILLECTA_PASSWORD) {
+    return "Basic " + Buffer.from(
+      `${process.env.BILLECTA_USERNAME}:${process.env.BILLECTA_PASSWORD}`
+    ).toString("base64");
+  }
+
+  if (process.env.BILLECTA_KEY) {
+    return "Basic " + Buffer.from(`${process.env.BILLECTA_KEY}:`).toString("base64");
+  }
+
+  return null;
+}
+
 export function parseSubmission(body) {
   if (body?.triggerType !== "form_submission") {
     throw new Error("Unexpected trigger type");
@@ -77,7 +104,7 @@ export function parseSubmission(body) {
   return {
     submissionId: payload.id,
     billectaPayload: {
-      creditorPublicId: CREDITOR_PUBLIC_ID,
+      creditorPublicId: getCreditorPublicId(),
       name,
       email,
       ssn,
@@ -132,7 +159,8 @@ export default async function handler(req, res) {
     return res.status(200).json({ accepted: true, dryRun: true, submissionId });
   }
 
-  if (!process.env.BILLECTA_KEY) {
+  const billectaAuthorization = getBillectaAuthorization();
+  if (!billectaAuthorization) {
     console.error("Billecta integration is not configured", { submissionId });
     return res.status(503).json({ error: "Integration unavailable" });
   }
@@ -141,8 +169,7 @@ export default async function handler(req, res) {
     const response = await fetch(`${getBillectaBaseUrl()}/v1/debtors/debtor`, {
       method: "POST",
       headers: {
-        Authorization: "Basic " +
-          Buffer.from(`${process.env.BILLECTA_KEY}:`).toString("base64"),
+        Authorization: billectaAuthorization,
         "Content-Type": "application/json",
         Accept: "application/json",
         UniqueApiCallId: `wf-${submissionId}`.slice(0, 50)
