@@ -130,3 +130,39 @@ test("uses Billecta's unique call header when live mode is explicitly enabled", 
     global.fetch = originalFetch;
   }
 });
+
+test("uses a SecureToken and environment-specific creditor in Billecta test mode", async () => {
+  const body = validBody();
+  process.env.WEBFLOW_WEBHOOK_SECRET = secret;
+  process.env.BILLECTA_DRY_RUN = "false";
+  process.env.BILLECTA_API_BASE_URL = "https://apitest.billecta.com";
+  process.env.BILLECTA_SECURE_TOKEN = "sandbox-token";
+  process.env.BILLECTA_CREDITOR_PUBLIC_ID = "11111111-1111-4111-8111-111111111111";
+  delete process.env.BILLECTA_KEY;
+
+  let request;
+  const originalFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    request = { url, options };
+    return { ok: true, status: 200 };
+  };
+
+  try {
+    const res = responseRecorder();
+    await handler({ method: "POST", body, headers: signedHeaders(body), query: {} }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(request.url, "https://apitest.billecta.com/v1/debtors/debtor");
+    assert.equal(
+      request.options.headers.Authorization,
+      `SecureToken ${Buffer.from("sandbox-token").toString("base64")}`
+    );
+    assert.equal(
+      JSON.parse(request.options.body).creditorPublicId,
+      "11111111-1111-4111-8111-111111111111"
+    );
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.BILLECTA_SECURE_TOKEN;
+    delete process.env.BILLECTA_CREDITOR_PUBLIC_ID;
+  }
+});
