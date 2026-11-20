@@ -2,7 +2,11 @@ import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import test from "node:test";
 
-import handler, { parseSubmission, verifyWebflowSignature } from "../api/signup.js";
+import handler, {
+  parseSubmission,
+  verifySharedToken,
+  verifyWebflowSignature
+} from "../api/signup.js";
 
 const secret = "local-test-secret";
 
@@ -60,6 +64,11 @@ test("rejects an expired Webflow signature", () => {
   }), false);
 });
 
+test("verifies a shared webhook token with a timing-safe comparison", () => {
+  assert.equal(verifySharedToken({ actual: "shared-token", expected: "shared-token" }), true);
+  assert.equal(verifySharedToken({ actual: "wrong-token", expected: "shared-token" }), false);
+});
+
 test("normalizes and validates the expected form", () => {
   const result = parseSubmission(validBody());
   assert.equal(result.submissionId, "submission-123");
@@ -72,7 +81,7 @@ test("accepts a valid signed request in safe dry-run mode", async () => {
   process.env.WEBFLOW_WEBHOOK_SECRET = secret;
   delete process.env.BILLECTA_DRY_RUN;
   const res = responseRecorder();
-  await handler({ method: "POST", body, headers: signedHeaders(body) }, res);
+  await handler({ method: "POST", body, headers: signedHeaders(body), query: {} }, res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.dryRun, true);
 });
@@ -80,8 +89,23 @@ test("accepts a valid signed request in safe dry-run mode", async () => {
 test("rejects an unsigned request before calling Billecta", async () => {
   process.env.WEBFLOW_WEBHOOK_SECRET = secret;
   const res = responseRecorder();
-  await handler({ method: "POST", body: validBody(), headers: {} }, res);
+  await handler({ method: "POST", body: validBody(), headers: {}, query: {} }, res);
   assert.equal(res.statusCode, 401);
+});
+
+test("accepts a valid shared token in dry-run mode", async () => {
+  const body = validBody();
+  process.env.WEBFLOW_SHARED_TOKEN = "shared-token";
+  delete process.env.BILLECTA_DRY_RUN;
+  const res = responseRecorder();
+  await handler({
+    method: "POST",
+    body,
+    headers: {},
+    query: { token: "shared-token" }
+  }, res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.dryRun, true);
 });
 
 test("uses Billecta's unique call header when live mode is explicitly enabled", async () => {
@@ -98,7 +122,7 @@ test("uses Billecta's unique call header when live mode is explicitly enabled", 
   };
   try {
     const res = responseRecorder();
-    await handler({ method: "POST", body, headers: signedHeaders(body) }, res);
+    await handler({ method: "POST", body, headers: signedHeaders(body), query: {} }, res);
     assert.equal(res.statusCode, 200);
     assert.equal(request.url, "https://apitest.billecta.com/v1/debtors/debtor");
     assert.equal(request.options.headers.UniqueApiCallId, "wf-submission-123");
