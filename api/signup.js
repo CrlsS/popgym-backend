@@ -32,6 +32,14 @@ export function verifyWebflowSignature({ body, headers, secret, now = Date.now()
     crypto.timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
+export function verifySharedToken({ actual, expected }) {
+  if (!actual || !expected) return false;
+  const actualBuffer = Buffer.from(actual, "utf8");
+  const expectedBuffer = Buffer.from(expected, "utf8");
+  return actualBuffer.length === expectedBuffer.length &&
+    crypto.timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
 function cleanString(value, maxLength) {
   return typeof value === "string" ? value.trim().slice(0, maxLength) : "";
 }
@@ -94,11 +102,17 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  if (!verifyWebflowSignature({
+  const hasValidSignature = verifyWebflowSignature({
     body: req.body,
     headers: req.headers,
     secret: process.env.WEBFLOW_WEBHOOK_SECRET
-  })) {
+  });
+  const hasValidSharedToken = verifySharedToken({
+    actual: req.query?.token,
+    expected: process.env.WEBFLOW_SHARED_TOKEN
+  });
+
+  if (!hasValidSignature && !hasValidSharedToken) {
     console.warn("Rejected webhook: invalid signature");
     return res.status(401).json({ error: "Unauthorized" });
   }
