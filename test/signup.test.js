@@ -72,8 +72,11 @@ test("verifies a shared webhook token with a timing-safe comparison", () => {
 test("normalizes and validates the expected form", () => {
   const result = parseSubmission(validBody());
   assert.equal(result.submissionId, "submission-123");
-  assert.equal(result.billectaPayload.ssn, "199001011234");
-  assert.equal(result.billectaPayload.address.zip, "12345");
+  assert.equal(result.billectaPayload.OrgNo, "199001011234");
+  assert.equal(result.billectaPayload.Address, "Testgatan 1");
+  assert.equal(result.billectaPayload.ZipCode, "12345");
+  assert.equal(result.billectaPayload.City, "Teststad");
+  assert.equal(result.billectaPayload.CountryCode, "SE");
 });
 
 test("accepts a valid signed request in safe dry-run mode", async () => {
@@ -157,7 +160,7 @@ test("uses a SecureToken and environment-specific creditor in Billecta test mode
       `SecureToken ${Buffer.from("sandbox-token").toString("base64")}`
     );
     assert.equal(
-      JSON.parse(request.options.body).creditorPublicId,
+      JSON.parse(request.options.body).CreditorPublicId,
       "11111111-1111-4111-8111-111111111111"
     );
   } finally {

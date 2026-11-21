@@ -104,11 +104,16 @@ export function parseSubmission(body) {
   return {
     submissionId: payload.id,
     billectaPayload: {
-      creditorPublicId: getCreditorPublicId(),
-      name,
-      email,
-      ssn,
-      address: { street, zip, city }
+      CreditorPublicId: getCreditorPublicId(),
+      Name: name,
+      Address: street,
+      ZipCode: zip,
+      City: city,
+      ContactEmail: email,
+      ContactName: name,
+      CountryCode: "SE",
+      Email: email,
+      OrgNo: ssn
     }
   };
 }
