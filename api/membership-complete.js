@@ -1,5 +1,6 @@
 import {
   billectaFetch,
+  debtorAutogiroPayload,
   getCreditorPublicId,
   monthlyAutogiroPayload,
   parseBankAccount,
@@ -38,13 +39,17 @@ export default async function handler(req, res) {
       `/v1/debtors/debtorsbyorgno/${creditorId}?orgno=${encodeURIComponent(registration.ssn)}` +
       "&countrycode=SE&offset=0&limit=1&sortingfield=Created&asc=false"
     );
-    if (Array.isArray(existing) && existing.length > 0) {
-      return res.status(409).json({ error: "customer_already_exists" });
+    if (!Array.isArray(existing) || existing.length === 0) {
+      await billectaFetch("/v1/debtors/debtor", {
+        method: "POST",
+        headers: { UniqueApiCallId: `member-debtor-${registration.nonce}`.slice(0, 50) },
+        body: JSON.stringify(debtorAutogiroPayload(registration, bankAccount))
+      });
     }
 
     const result = await billectaFetch("/v1/contractinvoice/monthlyrecurringautogiro", {
       method: "POST",
-      headers: { UniqueApiCallId: `member-${registration.nonce}`.slice(0, 50) },
+      headers: { UniqueApiCallId: `member-contract-${registration.nonce}`.slice(0, 50) },
       body: JSON.stringify(monthlyAutogiroPayload(registration, bankAccount))
     });
     console.info("Billecta test membership created", {
