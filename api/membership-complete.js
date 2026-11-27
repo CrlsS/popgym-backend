@@ -1,6 +1,6 @@
 import {
   billectaFetch,
-  debtorAutogiroPayload,
+  debtorPayload,
   getCreditorPublicId,
   monthlyAutogiroPayload,
   parseBankAccount,
@@ -20,6 +20,7 @@ export default async function handler(req, res) {
 
   let registration;
   let bankAccount;
+  let billectaStage = "customer_lookup";
   try {
     const body = parseJsonBody(req.body);
     registration = verifyState(body.state);
@@ -40,13 +41,15 @@ export default async function handler(req, res) {
       "&countrycode=SE&offset=0&limit=1&sortingfield=Created&asc=false"
     );
     if (!Array.isArray(existing) || existing.length === 0) {
+      billectaStage = "customer_create";
       await billectaFetch("/v1/debtors/debtor", {
         method: "POST",
         headers: { UniqueApiCallId: `member-debtor-${registration.nonce}`.slice(0, 50) },
-        body: JSON.stringify(debtorAutogiroPayload(registration, bankAccount))
+        body: JSON.stringify(debtorPayload(registration))
       });
     }
 
+    billectaStage = "contract_create";
     const result = await billectaFetch("/v1/contractinvoice/monthlyrecurringautogiro", {
       method: "POST",
       headers: { UniqueApiCallId: `member-contract-${registration.nonce}`.slice(0, 50) },
@@ -61,6 +64,7 @@ export default async function handler(req, res) {
     console.error("Could not create Billecta membership", {
       status: error.status || 500,
       reason: error.message,
+      stage: billectaStage,
       upstreamMessage: safeBillectaErrorMessage(error)
     });
     return res.status(502).json({ error: "membership_creation_failed" });

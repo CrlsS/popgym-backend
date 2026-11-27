@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   bankAccountRetrievalPayload,
   createState,
-  debtorAutogiroPayload,
+  debtorPayload,
   monthlyAutogiroPayload,
   parseBankAccount,
   parseRegistration,
@@ -88,22 +88,12 @@ test("builds Billecta monthly autogiro payload", () => {
   assert.equal(payload.DebtorExternalId, undefined);
 });
 
-test("builds a Billecta debtor with approved autogiro details", () => {
+test("builds a Billecta debtor before adding the membership contract", () => {
   process.env.BILLECTA_CREDITOR_PUBLIC_ID = "11111111-1111-4111-8111-111111111111";
-  const payload = debtorAutogiroPayload(
-    parseRegistration(validRegistration()),
-    parseBankAccount({ clearingNo: "1234", accountNo: "12345678", bank: "Testbanken" })
-  );
+  const payload = debtorPayload(parseRegistration(validRegistration()));
   assert.equal(payload.OrgNo, "199001011234");
   assert.equal(payload.DebtorType, "Private");
-  assert.deepEqual(payload.Autogiro, {
-    Active: true,
-    AccountNo: "12345678",
-    ClearingNo: "1234",
-    Stage: "Approved",
-    PaymentServiceSupplier: "Testbanken",
-    AutogiroFirstWithdrawalDate: null
-  });
+  assert.equal(payload.Autogiro, undefined);
 });
 
 test("redacts personal details from Billecta errors", () => {
