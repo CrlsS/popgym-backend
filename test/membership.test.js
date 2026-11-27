@@ -84,7 +84,7 @@ test("builds Billecta monthly autogiro payload", () => {
   assert.equal(payload.Amount, 990);
   assert.equal(payload.SSN, "199001011234");
   assert.equal(payload.EnableAutomaticDebtCollection, false);
-  assert.match(payload.DebtorExternalId, /^pop-[0-9a-f]{20}$/);
+  assert.equal(payload.DebtorExternalId, undefined);
 });
 
 test("redacts personal details from Billecta errors", () => {
