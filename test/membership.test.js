@@ -83,7 +83,7 @@ test("builds Billecta monthly autogiro payload", () => {
     parseBankAccount({ clearingNo: "1234", accountNo: "12345678", bank: "Testbanken" })
   );
   assert.equal(payload.Amount, 990);
-  assert.equal(payload.SSN, "199001011234");
+  assert.equal(payload.SSN, "900101-1234");
   assert.equal(payload.EnableAutomaticDebtCollection, false);
   assert.equal(payload.DebtorExternalId, undefined);
 });
