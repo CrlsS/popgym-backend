@@ -4,6 +4,7 @@ import {
   monthlyAutogiroPayload,
   parseBankAccount,
   parseJsonBody,
+  safeBillectaErrorMessage,
   setCors,
   verifyState
 } from "../lib/membership.js";
@@ -54,7 +55,8 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error("Could not create Billecta membership", {
       status: error.status || 500,
-      reason: error.message
+      reason: error.message,
+      upstreamMessage: safeBillectaErrorMessage(error)
     });
     return res.status(502).json({ error: "membership_creation_failed" });
   }

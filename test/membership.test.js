@@ -7,6 +7,7 @@ import {
   monthlyAutogiroPayload,
   parseBankAccount,
   parseRegistration,
+  safeBillectaErrorMessage,
   verifyState
 } from "../lib/membership.js";
 
@@ -84,5 +85,12 @@ test("builds Billecta monthly autogiro payload", () => {
   assert.equal(payload.SSN, "199001011234");
   assert.equal(payload.EnableAutomaticDebtCollection, false);
   assert.match(payload.DebtorExternalId, /^pop-[0-9a-f]{20}$/);
+});
+
+test("redacts personal details from Billecta errors", () => {
+  const message = safeBillectaErrorMessage({
+    upstreamMessage: "Invalid 19900101-1234 for test@example.com account 123456789012"
+  });
+  assert.equal(message, "Invalid [personnummer] for [email] account [personnummer]");
 });
 
