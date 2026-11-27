@@ -1,9 +1,9 @@
 import {
   BILLECTA_TEST_URL,
+  bankAccountRetrievalPayload,
   billectaFetch,
   createState,
   getBillectaBaseUrl,
-  getCreditorPublicId,
   parseJsonBody,
   parseRegistration,
   setCors
@@ -29,10 +29,7 @@ export default async function handler(req, res) {
   try {
     const result = await billectaFetch("/v1/bankaccount/initiateretrieval", {
       method: "POST",
-      body: JSON.stringify({
-        CreditorPublicId: getCreditorPublicId(),
-        PersonalIdNumber: `${registration.ssn.slice(2, 8)}-${registration.ssn.slice(8)}`
-      })
+      body: JSON.stringify(bankAccountRetrievalPayload(registration))
     });
     if (!result?.SessionToken || !result?.SessionId) {
       throw new Error("Invalid account retrieval response");

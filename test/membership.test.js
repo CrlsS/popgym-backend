@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  bankAccountRetrievalPayload,
   createState,
   monthlyAutogiroPayload,
   parseBankAccount,
@@ -62,6 +63,15 @@ test("normalizes a bank account response", () => {
   assert.deepEqual(parseBankAccount({
     clearingNo: "1234-5", accountNo: "12 345 678", bankName: "Testbanken"
   }), { clearingNo: "12345", accountNo: "12345678", bank: "Testbanken" });
+});
+
+test("omits personal identity number for Billecta Test Bank", () => {
+  process.env.BILLECTA_API_BASE_URL = "https://apitest.billecta.com";
+  process.env.BILLECTA_CREDITOR_PUBLIC_ID = "11111111-1111-4111-8111-111111111111";
+  const payload = bankAccountRetrievalPayload(parseRegistration(validRegistration()));
+  assert.deepEqual(payload, {
+    CreditorPublicId: "11111111-1111-4111-8111-111111111111"
+  });
 });
 
 test("builds Billecta monthly autogiro payload", () => {
