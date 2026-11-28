@@ -118,6 +118,8 @@ test("builds a safe draft monthly contract using the debtor public id", () => {
   );
   assert.equal(payload.DebtorPublicId, "22222222-2222-4222-8222-222222222222");
   assert.equal(payload.Records[0].UnitPrice.Value, 99000);
+  assert.equal(payload.Records[0].RotRutActivated, false);
+  assert.notEqual(payload.Records[0].RotRutType, "Unknown");
   assert.equal(payload.RecurrenceDetails.RecurrenceInterval, "Monthly");
   assert.equal(payload.AutogiroWithdrawalEnabled, true);
   assert.equal(payload.AutoAttest, false);
