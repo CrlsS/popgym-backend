@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   bankAccountRetrievalPayload,
+  contractInvoicePayload,
   createState,
   debtorPayload,
+  debtorWithAutogiroPayload,
   monthlyAutogiroPayload,
   parseBankAccount,
   parseRegistration,
@@ -94,6 +96,32 @@ test("builds a Billecta debtor before adding the membership contract", () => {
   assert.equal(payload.OrgNo, "199001011234");
   assert.equal(payload.DebtorType, "Private");
   assert.equal(payload.Autogiro, undefined);
+});
+
+test("adds approved autogiro details to an existing Billecta debtor", () => {
+  const payload = debtorWithAutogiroPayload(
+    { DebtorPublicId: "debtor-1", OrgNo: "199001011234", Name: "Test Person" },
+    parseBankAccount({ clearingNo: "1234", accountNo: "12345678", bank: "Testbanken" })
+  );
+  assert.equal(payload.DebtorPublicId, "debtor-1");
+  assert.equal(payload.Autogiro.Stage, "Approved");
+  assert.equal(payload.Autogiro.AccountNo, "12345678");
+});
+
+test("builds a safe draft monthly contract using the debtor public id", () => {
+  process.env.BILLECTA_CREDITOR_PUBLIC_ID = "11111111-1111-4111-8111-111111111111";
+  const payload = contractInvoicePayload(
+    parseRegistration(validRegistration()),
+    "22222222-2222-4222-8222-222222222222",
+    { InvoicePaymentTermsInDays: 10, InterestType: "NoInterest" },
+    new Date("2026-11-27T12:00:00Z")
+  );
+  assert.equal(payload.DebtorPublicId, "22222222-2222-4222-8222-222222222222");
+  assert.equal(payload.Records[0].UnitPrice.Value, 99000);
+  assert.equal(payload.RecurrenceDetails.RecurrenceInterval, "Monthly");
+  assert.equal(payload.AutogiroWithdrawalEnabled, true);
+  assert.equal(payload.AutoAttest, false);
+  assert.equal(payload.DeliveryMethod, "Manually");
 });
 
 test("redacts personal details from Billecta errors", () => {

@@ -1,8 +1,9 @@
 import {
   billectaFetch,
+  contractInvoicePayload,
   debtorPayload,
+  debtorWithAutogiroPayload,
   getCreditorPublicId,
-  monthlyAutogiroPayload,
   parseBankAccount,
   parseJsonBody,
   safeBillectaErrorMessage,
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
 
   try {
     const creditorId = getCreditorPublicId();
-    const existing = await billectaFetch(
+    let existing = await billectaFetch(
       `/v1/debtors/debtorsbyorgno/${creditorId}?orgno=${encodeURIComponent(registration.ssn)}` +
       "&countrycode=SE&offset=0&limit=1&sortingfield=Created&asc=false"
     );
@@ -47,13 +48,32 @@ export default async function handler(req, res) {
         headers: { UniqueApiCallId: `member-debtor-${registration.nonce}`.slice(0, 50) },
         body: JSON.stringify(debtorPayload(registration))
       });
+      billectaStage = "customer_reload";
+      existing = await billectaFetch(
+        `/v1/debtors/debtorsbyorgno/${creditorId}?orgno=${encodeURIComponent(registration.ssn)}` +
+        "&countrycode=SE&offset=0&limit=1&sortingfield=Created&asc=false"
+      );
     }
+    const debtor = Array.isArray(existing) ? existing[0] : null;
+    if (!debtor?.DebtorPublicId) throw new Error("Billecta debtor was not returned");
+
+    billectaStage = "autogiro_update";
+    await billectaFetch("/v1/debtors/debtor", {
+      method: "PUT",
+      headers: { UniqueApiCallId: `member-autogiro-${registration.nonce}`.slice(0, 50) },
+      body: JSON.stringify(debtorWithAutogiroPayload(debtor, bankAccount))
+    });
+
+    billectaStage = "contract_defaults";
+    const defaults = await billectaFetch(`/v1/creditors/defaultactionconfig/${creditorId}`);
 
     billectaStage = "contract_create";
-    const result = await billectaFetch("/v1/contractinvoice/monthlyrecurringautogiro", {
+    const result = await billectaFetch("/v1/contractinvoice/action", {
       method: "POST",
       headers: { UniqueApiCallId: `member-contract-${registration.nonce}`.slice(0, 50) },
-      body: JSON.stringify(monthlyAutogiroPayload(registration, bankAccount))
+      body: JSON.stringify(contractInvoicePayload(
+        registration, debtor.DebtorPublicId, defaults || {}
+      ))
     });
     console.info("Billecta test membership created", {
       membershipType: registration.membershipType,
