@@ -120,10 +120,15 @@ test("builds a safe draft monthly contract using the debtor public id", () => {
   assert.equal(payload.Records[0].UnitPrice.Value, 99000);
   assert.equal(payload.Records[0].RotRutActivated, false);
   assert.notEqual(payload.Records[0].RotRutType, "Unknown");
+  assert.equal(payload.Records[0].DiscountAmount, null);
+  assert.deepEqual(payload.Records[0].Dimensions, []);
   assert.equal(payload.RecurrenceDetails.RecurrenceInterval, "Monthly");
+  assert.equal(payload.RecurrenceDetails.YearlyRecurrence, null);
   assert.equal(payload.AutogiroWithdrawalEnabled, true);
   assert.equal(payload.AutoAttest, false);
   assert.equal(payload.DeliveryMethod, "Manually");
+  assert.equal(payload.SwishWithdrawalEnabled, undefined);
+  assert.equal(payload.PdfTemplateId, undefined);
 });
 
 test("redacts personal details from Billecta errors", () => {
